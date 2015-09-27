@@ -63,21 +63,22 @@ modFit <- train(classe ~ ., data = valid.data, method = "rf", trControl = trainC
 
 The final model precision is very high, the expected out of sample accuracy as computed with 10 fold cross validation is `r modFit$results[2][[1]][1] `.
 
-Bellow you may find more details concerning the classifier, most notably its confusion matrix.
+Bellow you may the confusion matrix, demonstrating the classifier accuracy in the 10 fold classification.
 
 ```{r, echo=FALSE}
-modFit$finalModel
+fm=modFit$finalModel
+fm$confusion
 ```
 
 Bellow is a chart of the predictors ordered according to their importance to the classifier:
 
-```{r, echo=FALSE, fig.width=7, fig.height=6}
+```{r, echo=FALSE, fig.width=7, fig.height=8}
 ## leest plot
 require(randomForest)
 varImpPlot(modFit$finalModel, main = "Predictors importance")
 ```
 
-Finally, this classifier was able to correctly predict all the 20 samples provided in the test dataset, yielding the following outcome:
+Finally, this classifier was able to correctly predict all 20 samples provided in the test dataset, yielding the following outcome:
 
 ```{r}
 ## load test dataset
