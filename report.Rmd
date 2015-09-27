@@ -1,0 +1,88 @@
+---
+title: "Practical Machine Learning Report"
+output: html_document
+---
+
+
+This assignment is part of the Practical Machine Learning coursera course.
+
+#### Introduction
+
+A dataset on weight lifting has been provided. Six subjects have been monitored while using movement sensors (comprising accelerometer, gyroscope and magnetometer) attached to the belt, arm, forearm and the dumbbell weight. Subjects were instructed to perform the weightlifting task in 5 different manners ("classe" variable), out of which one was correct (A), and 4 containned postural problems (B, C, D and E). More information regarding the dataset can be found in <http://groupware.les.inf.puc-rio.br/har>.
+
+We first load the training data:
+
+```{r, warning=FALSE}
+## load training dataset
+data <- read.csv("pml-training.csv", stringsAsFactors = F)
+
+## set all but the last column type to numeric
+for (i in 1:(ncol(data)-1)){
+    data[,i] <- as.numeric(data[,i])
+}
+## set last column (calsse) to factor
+data[,ncol(data)] <- as.factor(data[,ncol(data)])
+
+```
+
+
+#### Excluding irrelevant variables
+The dataset has 160 columns, most of which are not necessary or cannot be used for this project. The following variables are irrelevant to the task estimation: timestamps, windows, X and user_name. 
+
+By running the code bellow, I have also found that many columns were missing most of their data.
+
+```{r, eval=FALSE}
+print (paste0(names(data), ": ", colSums(is.na(data[,1:ncol(data)]))/nrow(data)))
+```
+
+Roughly 98% to 100% of the data was missing for all variables starting with avg, stddev, var, min, max, amplitude, kurtosis and skewness. The remaining data is argably insuficient to impute missing data, thus I decided to remove those variables using the regular expression bellow:
+
+```{r}
+## keep only relevant columns
+valid.data <- data[,grep("skewness|kurtosis|amplitude|min|max|var_|stddev|avg_|raw_|user|cvtd|window|X", names(data), invert = T)]
+
+```
+
+After this preprocessing, we are left with only 53 column. Out of which we have the response variable "classe" and 52 predictors.  
+
+#### Choice of algorithm
+
+Given that this is a classification problem ("classe" variable can only assume a limited range of values), I decided to use the decision tree based technique random forest. Random forest is an stochastic technique that builds a multitude of decision trees in the training phase, when predictiong cathegorical values, it uses the mode of the decision tree results. It offers great accuracy, and is less suceptible to overfitting than a single decision tree <https://en.wikipedia.org/wiki/Random_forest>. 
+
+
+Random forest makes use of bootstrap to randomly pool new datasets from samples and variables. However, as a consequence of its complexity, random forest is also a considerably slow classifier. For the provided dataset, it takes roughtly 1 hour to train the model. I have used the "train" function present in the "caret" package to run the classifier. Cross validation with 10 folds was used, the training code is as follows:
+
+```{r, cache = TRUE, message=FALSE}
+require(caret)
+set.seed(343876)
+modFit <- train(classe ~ ., data = valid.data, method = "rf", trControl = trainControl(method = "cv", number=10))
+```
+
+#### Accuracy
+
+The final model precision is very high, the expected out of sample accuracy as computed with 10 fold cross validation is `r modFit$results[2][[1]][1] `.
+
+Bellow you may find more details concerning the classifier, most notably its confusion matrix.
+
+```{r, echo=FALSE}
+modFit$finalModel
+```
+
+Bellow is a chart of the predictors ordered according to their importance to the classifier:
+
+```{r, echo=FALSE, fig.width=7, fig.height=6}
+## leest plot
+require(randomForest)
+varImpPlot(modFit$finalModel, main = "Predictors importance")
+```
+
+
+Finally, this classifier was able to correctly predict all the 20 samples provided in the test dataset, yelding the following result:
+
+```{r}
+## load test dataset
+test <- read.csv("pml-testing.csv", stringsAsFactors = F)
+predict(modFit, test)
+```
+
+
